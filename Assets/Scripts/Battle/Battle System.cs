@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -12,11 +13,13 @@ public class BattleSystem : MonoBehaviour
     [SerializeField] BattleHud enemyHud;
     [SerializeField] BattleDialogBox dialogBox;
 
+    public event Action<bool> OnBattleOver;
+
     BattleState state;
     int currentAction;
     int currentMove;
 
-    private void Start()
+    public void StartBattle()
     {
         StartCoroutine(SetUpBattle());
     }
@@ -56,7 +59,10 @@ public class BattleSystem : MonoBehaviour
         var move = playyerUnit.Gregomon.Moves[currentMove];
         yield return dialogBox.TypeDialog($"{playyerUnit.Gregomon.Base.Name} used {move.Base.Name}");
 
+        playyerUnit.PlayAttackAnimation();
+        yield return new WaitForSeconds(1f);
 
+        enemyUnit.PlayHitAnimation();
         var damageDetails = enemyUnit.Gregomon.TakeDamage(move, playyerUnit.Gregomon);
         yield return enemyHud.UpdateHP();
         yield return ShowDamageDetails(damageDetails);
@@ -64,6 +70,10 @@ public class BattleSystem : MonoBehaviour
         if (damageDetails.Fainted)
         {
             yield return dialogBox.TypeDialog($"{enemyUnit.Gregomon.Base.Name} fainted");
+            enemyUnit.PlayFaintAnimation();
+
+            yield return new WaitForSeconds(2f);
+            OnBattleOver(false);
         }
         else
         {
@@ -78,7 +88,10 @@ public class BattleSystem : MonoBehaviour
         var move = enemyUnit.Gregomon.GetRandomMove();
         yield return dialogBox.TypeDialog($"{enemyUnit.Gregomon.Base.Name} used {move.Base.Name}");
 
+        enemyUnit.PlayAttackAnimation();
+        yield return new WaitForSeconds(1f);
 
+        playyerUnit.PlayHitAnimation();
         var damageDetails = playyerUnit.Gregomon.TakeDamage(move, playyerUnit.Gregomon);
         yield return playerHud.UpdateHP();
         yield return ShowDamageDetails(damageDetails);
@@ -86,6 +99,10 @@ public class BattleSystem : MonoBehaviour
         if (damageDetails.Fainted)
         {
             yield return dialogBox.TypeDialog($"{playyerUnit.Gregomon.Base.Name} fainted");
+            playyerUnit.PlayFaintAnimation();
+
+            yield return new WaitForSeconds(2f);
+            OnBattleOver(true);
         }
         else
         {
@@ -105,7 +122,7 @@ public class BattleSystem : MonoBehaviour
 
     }
 
-    private void Update()
+    public void HandleUpdate()
     {
         if (state == BattleState.PlayerAction)
         {
