@@ -19,16 +19,21 @@ public class BattleSystem : MonoBehaviour
     int currentAction;
     int currentMove;
 
-    public void StartBattle()
+    PokemonPart playerParty;
+    Gregomon wildGregomon;
+
+    public void StartBattle(PokemonPart playerParty, Gregomon wildGregomon)
     {
+        this.playerParty = playerParty;
+        this.wildGregomon = wildGregomon;
         StartCoroutine(SetUpBattle());
     }
 
     public IEnumerator SetUpBattle()
     {
-        playyerUnit.Setup();
+        playyerUnit.Setup(playerParty.GetHealthyPokemon());
         playerHud.SetData(playyerUnit.Gregomon);
-        enemyUnit.Setup();
+        enemyUnit.Setup(wildGregomon);
         enemyHud.SetData(enemyUnit.Gregomon);
 
         dialogBox.SetMoveNames(playyerUnit.Gregomon.Moves);
@@ -41,8 +46,13 @@ public class BattleSystem : MonoBehaviour
     void PlayerAction()
     {
         state = BattleState.PlayerAction;
-        StartCoroutine(dialogBox.TypeDialog("Choose an action"));
+        dialogBox.SetDialog("Choose an action");
         dialogBox.enableActionSelector(true);
+    }
+
+    void OpenPartyScreen()
+    {
+        print("Partyy Screen");
     }
 
     void PlayerMove()
@@ -57,6 +67,7 @@ public class BattleSystem : MonoBehaviour
     {
         state = BattleState.Busy;
         var move = playyerUnit.Gregomon.Moves[currentMove];
+        move.PP--;
         yield return dialogBox.TypeDialog($"{playyerUnit.Gregomon.Base.Name} used {move.Base.Name}");
 
         playyerUnit.PlayAttackAnimation();
@@ -86,6 +97,7 @@ public class BattleSystem : MonoBehaviour
         state = BattleState.enemyMove;
 
         var move = enemyUnit.Gregomon.GetRandomMove();
+        move.PP--;
         yield return dialogBox.TypeDialog($"{enemyUnit.Gregomon.Base.Name} used {move.Base.Name}");
 
         enemyUnit.PlayAttackAnimation();
@@ -102,7 +114,25 @@ public class BattleSystem : MonoBehaviour
             playyerUnit.PlayFaintAnimation();
 
             yield return new WaitForSeconds(2f);
-            OnBattleOver(true);
+
+            var nextGregomon = playerParty.GetHealthyPokemon();
+            if (nextGregomon != null)
+            {
+                playyerUnit.Setup(nextGregomon);
+                playerHud.SetData(nextGregomon);
+                
+                
+                dialogBox.SetMoveNames(nextGregomon.Moves);
+
+                yield return dialogBox.TypeDialog($"Go {nextGregomon.Base.Name}!");
+
+                PlayerAction();
+            }
+            else
+            {
+                OnBattleOver(false);
+            }
+            
         }
         else
         {
@@ -137,16 +167,29 @@ public class BattleSystem : MonoBehaviour
 
     void HandleActionSelection()
     {
-        if (Input.GetKeyDown(KeyCode.DownArrow))
+        if (Input.GetKeyDown(KeyCode.RightArrow)) 
         {
-            if (currentAction < 1)
-                ++currentAction;
+            ++currentAction;
+            Debug.Log(currentAction);
         }
-        else if (Input.GetKeyDown(KeyCode.UpArrow))
+        else if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
-            if (currentAction > 0)
-                --currentAction;
+            --currentAction;
+            Debug.Log(currentAction);
         }
+        else if (Input.GetKey(KeyCode.DownArrow))
+        {
+            currentAction += 2;
+            Debug.Log(currentAction);
+        }    
+        else if (Input.GetKey(KeyCode.UpArrow))
+        {
+            currentAction -= 2;
+            Debug.Log(currentAction);
+        }
+            
+
+        currentAction = Mathf.Clamp(currentAction, 0, 3);
 
         dialogBox.UpdateActionSelection(currentAction);
 
@@ -159,7 +202,16 @@ public class BattleSystem : MonoBehaviour
             }
             else if (currentAction == 1)
             {
-                //run
+                //Bag
+            }
+            else if (currentAction == 2)
+            {
+                //Gregomon
+                OpenPartyScreen();
+            }
+            else if (currentAction == 3)
+            {
+                //Run
             }
         }
     }
@@ -167,25 +219,15 @@ public class BattleSystem : MonoBehaviour
     void HandleMoveSelection()
     {
         if (Input.GetKeyDown(KeyCode.RightArrow))
-        {
-            if (currentMove < playyerUnit.Gregomon.Moves.Count - 1)
-                ++currentMove;
-        }
+            ++currentMove;
         else if (Input.GetKeyDown(KeyCode.LeftArrow))
-        {
-            if (currentMove > 0)
-                --currentMove;
-        }
-        else if (Input.GetKeyDown(KeyCode.DownArrow))
-        {
-            if (currentMove < playyerUnit.Gregomon.Moves.Count - 2)
-                currentMove += 2;
-        }
-        else if (Input.GetKeyDown(KeyCode.UpArrow))
-        {
-            if (currentMove > 1)
-                currentMove -= 2;
-        }
+            --currentMove;
+        else if (Input.GetKey(KeyCode.DownArrow))
+            currentMove += 2;
+        else if (Input.GetKey(KeyCode.UpArrow))
+            currentMove -= 2;
+
+        currentMove = Mathf.Clamp(currentMove, 0, playyerUnit.Gregomon.Moves.Count - 1);
 
         dialogBox.UpdateMoveSelection(currentMove, playyerUnit.Gregomon.Moves[currentMove]);
 
@@ -194,6 +236,12 @@ public class BattleSystem : MonoBehaviour
             dialogBox.enableMoveSelctor(false);
             dialogBox.enableDialogText(true);
             StartCoroutine(PerformPlayerMove());
+        }
+        else if (Input.GetKeyDown(KeyCode.X))
+        {
+            dialogBox.enableMoveSelctor(false);
+            dialogBox.enableDialogText(true);
+            PlayerAction();
         }
     }
 }

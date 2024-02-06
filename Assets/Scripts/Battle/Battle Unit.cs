@@ -6,8 +6,7 @@ using DG.Tweening;
 
 public class BattleUnit : MonoBehaviour
 {
-    [SerializeField] GregomonBase _base;
-    [SerializeField] int level;
+
     [SerializeField] bool isPlayerUnit;
 
     public Gregomon Gregomon { get; set; }
@@ -24,9 +23,9 @@ public class BattleUnit : MonoBehaviour
         originalColor = image.color;
     }
 
-    public void Setup()
+    public void Setup(Gregomon gregomon)
     {
-        Gregomon = new Gregomon(_base, level);
+        Gregomon = gregomon;
         if (isPlayerUnit)
         {
             image.sprite = Gregomon.Base.BackSprite;

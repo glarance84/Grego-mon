@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "Move", menuName ="Gregomon/Create new move")]
+[CreateAssetMenu(fileName = "Move", menuName = "Gregomon/Create new move")]
 public class MoveBase : ScriptableObject
 {
     [SerializeField] new string name;
@@ -43,5 +44,20 @@ public class MoveBase : ScriptableObject
     public int PP
     {
         get { return pp; }
+    }
+
+    public bool IsSpecial
+    {
+        get
+        {
+            if (type == GregomonBase.GregomonType.Fire || type == GregomonBase.GregomonType.Water || type == GregomonBase.GregomonType.Grass || type == GregomonBase.GregomonType.Ice || type == GregomonBase.GregomonType.Electric || type == GregomonBase.GregomonType.Dragon)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
     }
 }
