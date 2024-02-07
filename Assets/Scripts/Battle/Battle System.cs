@@ -12,6 +12,7 @@ public class BattleSystem : MonoBehaviour
     [SerializeField] BattleHud playerHud;
     [SerializeField] BattleHud enemyHud;
     [SerializeField] BattleDialogBox dialogBox;
+    [SerializeField] PartyScript partyScreen;
 
     public event Action<bool> OnBattleOver;
 
@@ -36,6 +37,8 @@ public class BattleSystem : MonoBehaviour
         enemyUnit.Setup(wildGregomon);
         enemyHud.SetData(enemyUnit.Gregomon);
 
+        partyScreen.Init();
+
         dialogBox.SetMoveNames(playyerUnit.Gregomon.Moves);
 
         yield return dialogBox.TypeDialog($"A wild {enemyUnit.Gregomon.Base.Name} appeared");
@@ -52,7 +55,8 @@ public class BattleSystem : MonoBehaviour
 
     void OpenPartyScreen()
     {
-        print("Partyy Screen");
+        partyScreen.SetPartyyData(playerParty.Gregomons);
+        partyScreen.gameObject.SetActive(true);
     }
 
     void PlayerMove()
@@ -170,22 +174,18 @@ public class BattleSystem : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.RightArrow)) 
         {
             ++currentAction;
-            Debug.Log(currentAction);
         }
         else if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
             --currentAction;
-            Debug.Log(currentAction);
         }
-        else if (Input.GetKey(KeyCode.DownArrow))
+        else if (Input.GetKeyDown(KeyCode.DownArrow))
         {
             currentAction += 2;
-            Debug.Log(currentAction);
         }    
-        else if (Input.GetKey(KeyCode.UpArrow))
+        else if (Input.GetKeyDown(KeyCode.UpArrow))
         {
             currentAction -= 2;
-            Debug.Log(currentAction);
         }
             
 

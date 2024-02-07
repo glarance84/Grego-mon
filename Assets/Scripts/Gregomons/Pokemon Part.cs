@@ -7,6 +7,11 @@ public class PokemonPart : MonoBehaviour
 {
     [SerializeField] List<Gregomon> gregomons;
 
+    public List<Gregomon> Gregomons
+    {
+        get { return gregomons; }
+    }
+
     private void Start()
     {
         foreach (var gregomon in gregomons)
