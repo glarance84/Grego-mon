@@ -3,14 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum BattleState { Start, PlayerAction, PlayerMove, enemyMove, Busy}
+public enum BattleState { Start, ActionSelection, MoveSelection, PeformMove, Busy, PartyScreen, BattleOver}
 
 public class BattleSystem : MonoBehaviour
 {
     [SerializeField] BattleUnit playyerUnit;
     [SerializeField] BattleUnit enemyUnit;
-    [SerializeField] BattleHud playerHud;
-    [SerializeField] BattleHud enemyHud;
     [SerializeField] BattleDialogBox dialogBox;
     [SerializeField] PartyScript partyScreen;
 
@@ -19,6 +17,7 @@ public class BattleSystem : MonoBehaviour
     BattleState state;
     int currentAction;
     int currentMove;
+    int currentMember;
 
     PokemonPart playerParty;
     Gregomon wildGregomon;
@@ -33,9 +32,7 @@ public class BattleSystem : MonoBehaviour
     public IEnumerator SetUpBattle()
     {
         playyerUnit.Setup(playerParty.GetHealthyPokemon());
-        playerHud.SetData(playyerUnit.Gregomon);
         enemyUnit.Setup(wildGregomon);
-        enemyHud.SetData(enemyUnit.Gregomon);
 
         partyScreen.Init();
 
@@ -43,105 +40,139 @@ public class BattleSystem : MonoBehaviour
 
         yield return dialogBox.TypeDialog($"A wild {enemyUnit.Gregomon.Base.Name} appeared");
 
-        PlayerAction();
+        ChooseFirstTurn();
     }
 
-    void PlayerAction()
+    void ChooseFirstTurn()
     {
-        state = BattleState.PlayerAction;
+        if (playyerUnit.Gregomon.Speed >= enemyUnit.Gregomon.Speed)
+        {
+            ActionSelection();
+        }
+        else
+            StartCoroutine(EnemyMove());
+    }
+
+    void BattleOver(bool won)
+    {
+        state = BattleState.BattleOver;
+        playerParty.Gregomons.ForEach(p => p.OnBattleOver());
+        OnBattleOver(won);
+    }
+
+    void ActionSelection()
+    {
+        state = BattleState.ActionSelection;
         dialogBox.SetDialog("Choose an action");
         dialogBox.enableActionSelector(true);
     }
 
     void OpenPartyScreen()
     {
+        state = BattleState.PartyScreen;
         partyScreen.SetPartyyData(playerParty.Gregomons);
         partyScreen.gameObject.SetActive(true);
     }
 
-    void PlayerMove()
+    void MoveSelection()
     {
-        state = BattleState.PlayerMove;
+        state = BattleState.MoveSelection;
         dialogBox.enableActionSelector(false);
         dialogBox.enableDialogText(false);
         dialogBox.enableMoveSelctor(true);
     }
 
-    IEnumerator PerformPlayerMove()
+    IEnumerator PlayerMove()
     {
-        state = BattleState.Busy;
+        state = BattleState.PeformMove;
+
         var move = playyerUnit.Gregomon.Moves[currentMove];
-        move.PP--;
-        yield return dialogBox.TypeDialog($"{playyerUnit.Gregomon.Base.Name} used {move.Base.Name}");
-
-        playyerUnit.PlayAttackAnimation();
-        yield return new WaitForSeconds(1f);
-
-        enemyUnit.PlayHitAnimation();
-        var damageDetails = enemyUnit.Gregomon.TakeDamage(move, playyerUnit.Gregomon);
-        yield return enemyHud.UpdateHP();
-        yield return ShowDamageDetails(damageDetails);
-
-        if (damageDetails.Fainted)
-        {
-            yield return dialogBox.TypeDialog($"{enemyUnit.Gregomon.Base.Name} fainted");
-            enemyUnit.PlayFaintAnimation();
-
-            yield return new WaitForSeconds(2f);
-            OnBattleOver(false);
-        }
-        else
-        {
+        yield return RunMove(playyerUnit, enemyUnit, move);
+        
+        if (state == BattleState.PeformMove)
             StartCoroutine(EnemyMove());
-        }
     }
 
     IEnumerator EnemyMove()
     {
-        state = BattleState.enemyMove;
+        state = BattleState.PeformMove;
 
         var move = enemyUnit.Gregomon.GetRandomMove();
+        yield return RunMove(enemyUnit, playyerUnit, move);
+
+
+        if (state == BattleState.PeformMove)
+            ActionSelection();
+    }
+
+    IEnumerator RunMove(BattleUnit sourceUnit, BattleUnit targetUnit, Move move)
+    {
         move.PP--;
-        yield return dialogBox.TypeDialog($"{enemyUnit.Gregomon.Base.Name} used {move.Base.Name}");
+        yield return dialogBox.TypeDialog($"{sourceUnit.Gregomon.Base.Name} used {move.Base.Name}");
 
-        enemyUnit.PlayAttackAnimation();
+        sourceUnit.PlayAttackAnimation();
         yield return new WaitForSeconds(1f);
+        targetUnit.PlayHitAnimation();
 
-        playyerUnit.PlayHitAnimation();
-        var damageDetails = playyerUnit.Gregomon.TakeDamage(move, playyerUnit.Gregomon);
-        yield return playerHud.UpdateHP();
-        yield return ShowDamageDetails(damageDetails);
-
-        if (damageDetails.Fainted)
+        
+        if (move.Base.Category == MoveBase.MoveCategory.Status)
         {
-            yield return dialogBox.TypeDialog($"{playyerUnit.Gregomon.Base.Name} fainted");
-            playyerUnit.PlayFaintAnimation();
-
-            yield return new WaitForSeconds(2f);
-
-            var nextGregomon = playerParty.GetHealthyPokemon();
-            if (nextGregomon != null)
-            {
-                playyerUnit.Setup(nextGregomon);
-                playerHud.SetData(nextGregomon);
-                
-                
-                dialogBox.SetMoveNames(nextGregomon.Moves);
-
-                yield return dialogBox.TypeDialog($"Go {nextGregomon.Base.Name}!");
-
-                PlayerAction();
-            }
-            else
-            {
-                OnBattleOver(false);
-            }
-            
+            yield return RunMoveEffects(move, sourceUnit.Gregomon, targetUnit.Gregomon);
         }
         else
         {
-            PlayerAction();
+            var damageDetails = targetUnit.Gregomon.TakeDamage(move, sourceUnit.Gregomon);
+            yield return targetUnit.Hud.UpdateHP();
+            yield return ShowDamageDetails(damageDetails);
         }
+
+
+        if (targetUnit.Gregomon.HP <= 0)
+        {
+            yield return dialogBox.TypeDialog($"{targetUnit.Gregomon.Base.Name} fainted");
+            targetUnit.PlayFaintAnimation();
+            yield return new WaitForSeconds(2f);
+
+            CheckForBattleOver(targetUnit);
+        }
+    }
+
+    IEnumerator RunMoveEffects(Move move, Gregomon source, Gregomon target)
+    {
+        var effects = move.Base.Effects;
+        if (effects.Boosts != null)
+        {
+            if (move.Base.Target == MoveBase.MoveTarget.Self)
+                source.ApplyBoosts(effects.Boosts);
+            else
+                target.ApplyBoosts(effects.Boosts);
+        }
+
+        yield return ShowStatusChanges(source);
+        yield return ShowStatusChanges(target);
+    }
+
+    IEnumerator ShowStatusChanges(Gregomon gregomon)
+    {
+        while (gregomon.StatusChanges.Count > 0)
+        {
+            var message = gregomon.StatusChanges.Dequeue();
+            yield return dialogBox.TypeDialog(message);
+        }
+    }
+
+    void CheckForBattleOver(BattleUnit faintedUnit)
+    {
+        if (faintedUnit.IsPlayerUnit)
+        {
+            var nextGregomon = playerParty.GetHealthyPokemon();
+            if (nextGregomon == null)
+                BattleOver(false);
+            else
+                OpenPartyScreen();
+        }
+        else
+            BattleOver(true);
     }
 
     IEnumerator ShowDamageDetails(DamageDetails damageDetails)
@@ -158,13 +189,17 @@ public class BattleSystem : MonoBehaviour
 
     public void HandleUpdate()
     {
-        if (state == BattleState.PlayerAction)
+        if (state == BattleState.ActionSelection)
         {
             HandleActionSelection();
         }
-        else if (state == BattleState.PlayerMove)
+        else if (state == BattleState.MoveSelection)
         {
             HandleMoveSelection();
+        }
+        else if (state == BattleState.PartyScreen)
+        {
+            HandlePartySelection();
         }
 
     }
@@ -198,7 +233,7 @@ public class BattleSystem : MonoBehaviour
             if (currentAction == 0)
             {
                 //fight
-                PlayerMove();
+                MoveSelection();
             }
             else if (currentAction == 1)
             {
@@ -222,9 +257,9 @@ public class BattleSystem : MonoBehaviour
             ++currentMove;
         else if (Input.GetKeyDown(KeyCode.LeftArrow))
             --currentMove;
-        else if (Input.GetKey(KeyCode.DownArrow))
+        else if (Input.GetKeyDown(KeyCode.DownArrow))
             currentMove += 2;
-        else if (Input.GetKey(KeyCode.UpArrow))
+        else if (Input.GetKeyDown(KeyCode.UpArrow))
             currentMove -= 2;
 
         currentMove = Mathf.Clamp(currentMove, 0, playyerUnit.Gregomon.Moves.Count - 1);
@@ -235,13 +270,78 @@ public class BattleSystem : MonoBehaviour
         {
             dialogBox.enableMoveSelctor(false);
             dialogBox.enableDialogText(true);
-            StartCoroutine(PerformPlayerMove());
+            StartCoroutine(PlayerMove());
         }
         else if (Input.GetKeyDown(KeyCode.X))
         {
             dialogBox.enableMoveSelctor(false);
             dialogBox.enableDialogText(true);
-            PlayerAction();
+            ActionSelection();
         }
+    }
+
+    void HandlePartySelection()
+    {
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+            ++currentMember;
+        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+            --currentMember;
+        else if (Input.GetKeyDown(KeyCode.DownArrow))
+            currentMember += 2;
+        else if (Input.GetKeyDown(KeyCode.UpArrow))
+            currentMember -= 2;
+
+        currentMember = Mathf.Clamp(currentMember, 0, playerParty.Gregomons.Count - 1);
+
+        partyScreen.UpdateMemberSelection(currentMember);
+
+        if (Input.GetKeyDown(KeyCode.Z))
+        {
+            var selectedMember = playerParty.Gregomons[currentMember];
+            if (selectedMember.HP <= 0)
+            {
+                partyScreen.SetMessageText("You can't send out a fainted Gregomon");
+                return;
+            }
+            if (selectedMember == playyerUnit.Gregomon)
+            {
+                partyScreen.SetMessageText("You can't switch with the same Gregomon");
+                return;
+            }
+
+            partyScreen.gameObject.SetActive(false);
+            state = BattleState.Busy;
+            StartCoroutine(SwitchGregomon(selectedMember));
+        }
+        else if (Input.GetKeyDown(KeyCode.X))
+        {
+            partyScreen.gameObject.SetActive(true);
+            ActionSelection();
+        }
+
+    }
+
+    IEnumerator SwitchGregomon(Gregomon newGregomon)
+    {
+        bool currentGregomonfainted = true;
+        if (playyerUnit.Gregomon.HP > 0)
+        {
+            currentGregomonfainted = false;
+            yield return dialogBox.TypeDialog($"Come back {playyerUnit.Gregomon.Base.Name}");
+            playyerUnit.PlayFaintAnimation();
+            yield return new WaitForSeconds(2);
+        }
+
+        playyerUnit.Setup(newGregomon);
+
+        dialogBox.SetMoveNames(newGregomon.Moves);
+
+        yield return dialogBox.TypeDialog($"Go {newGregomon.Base.Name}!");
+
+        if (currentGregomonfainted)
+            ChooseFirstTurn();
+        else
+            StartCoroutine(EnemyMove());
+
     }
 }

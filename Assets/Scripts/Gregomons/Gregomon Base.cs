@@ -129,6 +129,15 @@ public class GregomonBase : ScriptableObject
         Dragon
     }
 
+    public enum Stat
+    {
+        Attack,
+        Defense,
+        SpAttack,
+        SpDefense,
+        Speed
+    }
+
     public class TypeChart
     {
         static float[][] chart =

@@ -10,6 +10,8 @@ public class PartyMemberUI : MonoBehaviour
     [SerializeField] TextMeshProUGUI levelText;
     [SerializeField] HPBar hpBar;
 
+    [SerializeField] Color highlightedColor;
+
     Gregomon _gregomon;
 
     public void SetData(Gregomon gregomon)
@@ -18,5 +20,13 @@ public class PartyMemberUI : MonoBehaviour
         nameText.text = gregomon.Base.Name;
         levelText.text = "lvl " + gregomon.Level;
         hpBar.SetHP((float)gregomon.HP / gregomon.MaxHp);
+    }
+
+    public void SetSelected(bool selected)
+    {
+        if (selected)
+            nameText.color = highlightedColor;
+        else
+            nameText.color = Color.black;
     }
 }

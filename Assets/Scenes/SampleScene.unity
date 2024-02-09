@@ -1735,8 +1735,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playyerUnit: {fileID: 1493967961}
   enemyUnit: {fileID: 1268284464}
-  playerHud: {fileID: 1469466807}
-  enemyHud: {fileID: 410814332}
   dialogBox: {fileID: 2063493600}
   partyScreen: {fileID: 1795482773}
 --- !u!4 &667638570
@@ -5328,6 +5326,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isPlayerUnit: 0
+  hud: {fileID: 410814332}
 --- !u!114 &1268284465
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5947,6 +5946,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isPlayerUnit: 1
+  hud: {fileID: 1469466807}
 --- !u!224 &1531222067 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1063521153458032067, guid: e38f5a9eb715b994ebb92dfd158d35a6, type: 3}
@@ -8197,6 +8197,12 @@ MonoBehaviour:
     level: 7
   - _base: {fileID: 11400000, guid: 7a01f4da8e55ab94a8a6a2b771358285, type: 2}
     level: 3
+  - _base: {fileID: 11400000, guid: 7a01f4da8e55ab94a8a6a2b771358285, type: 2}
+    level: 5
+  - _base: {fileID: 11400000, guid: 7a01f4da8e55ab94a8a6a2b771358285, type: 2}
+    level: 6
+  - _base: {fileID: 11400000, guid: 7a01f4da8e55ab94a8a6a2b771358285, type: 2}
+    level: 7
 --- !u!1 &1853727894
 GameObject:
   m_ObjectHideFlags: 0

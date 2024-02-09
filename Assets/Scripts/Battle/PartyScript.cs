@@ -9,6 +9,7 @@ public class PartyScript : MonoBehaviour
     [SerializeField] TextMeshProUGUI messegeText;
 
     PartyMemberUI[] memberSlots;
+    List<Gregomon> gregomons;
 
     public void Init()
     {
@@ -17,6 +18,8 @@ public class PartyScript : MonoBehaviour
 
     public void SetPartyyData(List<Gregomon> gregomons)
     {
+        this.gregomons = gregomons;
+
         for (int i = 0; i < memberSlots.Length; i++)
         {
             if (i < gregomons.Count)
@@ -26,5 +29,21 @@ public class PartyScript : MonoBehaviour
         }
 
         messegeText.text = "Choose a Pokemon";
+    }
+
+    public void UpdateMemberSelection(int selectedMember)
+    {
+        for  (int i = 0;i < gregomons.Count;i++)
+        {
+            if (i == selectedMember)
+                memberSlots[i].SetSelected(true);
+            else
+                memberSlots[i].SetSelected(false);
+        }
+    }
+
+    public void SetMessageText(string message)
+    {
+        messegeText.text = message;
     }
 }

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
+using static GregomonBase;
 
 [CreateAssetMenu(fileName = "Move", menuName = "Gregomon/Create new move")]
 public class MoveBase : ScriptableObject
@@ -15,6 +16,10 @@ public class MoveBase : ScriptableObject
     [SerializeField] int power;
     [SerializeField] int accuracy;
     [SerializeField] int pp;
+    [SerializeField] MoveCategory category;
+    [SerializeField] MoveEffects effects;
+    [SerializeField] MoveTarget target;
+
 
     public string Name
     {
@@ -46,18 +51,40 @@ public class MoveBase : ScriptableObject
         get { return pp; }
     }
 
-    public bool IsSpecial
+    public MoveCategory Category
     {
-        get
+        get { return category; }
+    }
+
+    public MoveEffects Effects { get { return effects; } }
+
+    public MoveTarget Target { get { return target; } }
+
+    [System.Serializable]
+    public class MoveEffects
+    {
+        [SerializeField] List<StatBoost> boosts;
+
+        public List<StatBoost> Boosts
         {
-            if (type == GregomonBase.GregomonType.Fire || type == GregomonBase.GregomonType.Water || type == GregomonBase.GregomonType.Grass || type == GregomonBase.GregomonType.Ice || type == GregomonBase.GregomonType.Electric || type == GregomonBase.GregomonType.Dragon)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            get { return boosts; }
         }
+    }
+
+    [System.Serializable]
+    public class StatBoost
+    {
+        public Stat stat;
+        public int boost;
+    }
+
+    public enum MoveCategory
+    {
+        Physical, Special, Status
+    }
+
+    public enum MoveTarget
+    {
+        Foe, Self
     }
 }
