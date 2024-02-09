@@ -107,6 +107,16 @@ public class BattleSystem : MonoBehaviour
 
     IEnumerator RunMove(BattleUnit sourceUnit, BattleUnit targetUnit, Move move)
     {
+
+        bool canRunMove = sourceUnit.Gregomon.OnBeforeMove();
+        if (!canRunMove)
+        {
+            yield return ShowStatusChanges(sourceUnit.Gregomon);
+            yield return sourceUnit.Hud.UpdateHP();
+            yield break;
+        }
+        yield return ShowStatusChanges(sourceUnit.Gregomon);
+
         move.PP--;
         yield return dialogBox.TypeDialog($"{sourceUnit.Gregomon.Base.Name} used {move.Base.Name}");
 
@@ -135,17 +145,42 @@ public class BattleSystem : MonoBehaviour
 
             CheckForBattleOver(targetUnit);
         }
+
+        // Statuses like burn or psn will hurt the gregomon after the turn
+        sourceUnit.Gregomon.OnAfterTurn();
+        yield return ShowStatusChanges(sourceUnit.Gregomon);
+        yield return sourceUnit.Hud.UpdateHP();
+        if (targetUnit.Gregomon.HP <= 0)
+        {
+            yield return dialogBox.TypeDialog($"{sourceUnit.Gregomon.Base.Name} fainted");
+            sourceUnit.PlayFaintAnimation();
+            yield return new WaitForSeconds(2f);
+
+            CheckForBattleOver(targetUnit);
+        }
     }
 
     IEnumerator RunMoveEffects(Move move, Gregomon source, Gregomon target)
     {
         var effects = move.Base.Effects;
+
+        //Stat Boosting
         if (effects.Boosts != null)
         {
             if (move.Base.Target == MoveBase.MoveTarget.Self)
                 source.ApplyBoosts(effects.Boosts);
             else
                 target.ApplyBoosts(effects.Boosts);
+        }
+
+        if (effects.Status != ConditionID.none)
+        {
+            target.SetStatus(effects.Status);
+        }
+
+        if (effects.VolatileStatus != ConditionID.none)
+        {
+            target.SetVolatileStatus(effects.VolatileStatus);
         }
 
         yield return ShowStatusChanges(source);

@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using static GregomonBase;
@@ -31,7 +30,17 @@ public class Gregomon
     public Dictionary<Stat, int> Stats { get; private set; }
     public Dictionary<Stat, int> StatBoost { get; private set; }
 
-    public Queue<string> StatusChanges { get; private set; }  = new Queue<string>();
+    public Condition Status { get; private set; }
+
+    public Queue<string> StatusChanges { get; set; }  = new Queue<string>();
+    public int StatusTime { get; set; }
+    
+    public Condition VolatileStatus {  get; private set; }
+    public int VolatileStatusTime { get; set; }
+
+    public bool HpChanged { get; set; }
+
+    public event System.Action OnStatusChanged;
 
     public void Init()
     {
@@ -52,6 +61,8 @@ public class Gregomon
         HP = MaxHp;
 
         ResetStatBoost();
+        Status = null;
+        VolatileStatus = null;
     }
 
     void CalculateStats()
@@ -63,7 +74,7 @@ public class Gregomon
         Stats.Add(Stat.SpDefense, Mathf.FloorToInt((Base.SpDefense * Level) / 100f) + 5);
         Stats.Add(Stat.Speed, Mathf.FloorToInt((Base.Speed * Level) / 100f) + 5);
 
-        MaxHp = Mathf.FloorToInt((Base.MaxHp * Level) / 100f) + 10;
+        MaxHp = Mathf.FloorToInt((Base.MaxHp * Level) / 100f) + 10 + Level;
     }
 
     void ResetStatBoost()
@@ -141,13 +152,7 @@ public class Gregomon
     }
 
     public int MaxHp { get; set; }
-    
-      public void OnBattleOver()
-    {
-        ResetStatBoost();
-    }  
-    
-
+   
     public DamageDetails TakeDamage(Move move, Gregomon attacker)
     {
         float critical = 1f;
@@ -171,20 +176,84 @@ public class Gregomon
         float d = a * move.Base.Power * ((float)attack / defense) + 2;
         int damage = Mathf.FloorToInt(d * modifiers);
 
-        HP -= damage;
-        if (HP <= 0)
-        {
-            HP = 0;
-            damageDetails.Fainted = true;
-        }
+        UpdateHP(damage);
 
         return damageDetails;
     }
+
+    public void UpdateHP(int damage)
+    {
+        HP = Mathf.Clamp(HP - damage, 0, MaxHp);
+        HpChanged = true;
+    }
+
+    public void SetStatus(ConditionID conditionID)
+    {
+        if (Status != null) return;
+
+        Status = ConditionsDB.Conditions[conditionID];
+        Status?.OnStart?.Invoke(this);
+        StatusChanges.Enqueue($"{Base.Name} {Status.StartMessage}");
+        OnStatusChanged?.Invoke();
+    }
+
+    public void CureStatus()
+    {
+        Status = null;
+        OnStatusChanged?.Invoke();
+    }
+
+    public void SetVolatileStatus(ConditionID conditionID)
+    {
+        if (VolatileStatus != null) return;
+
+        VolatileStatus = ConditionsDB.Conditions[conditionID];
+        VolatileStatus?.OnStart?.Invoke(this);
+        StatusChanges.Enqueue($"{Base.Name} {VolatileStatus.StartMessage}");
+       
+    }
+
+    public void CureVolatileStatus()
+    {
+        VolatileStatus = null;
+        
+    }
+
+    public void OnBattleOver()
+    {
+        VolatileStatus = null;
+        ResetStatBoost();
+    }
+
 
     public Move GetRandomMove()
     {
         int r = Random.Range(0, Moves.Count);
         return Moves[r];
+    }
+
+    public bool OnBeforeMove()
+    {
+        bool canPeformMove = true;
+        if (Status?.OnBeforeMove != null)
+        {
+            if (!Status.OnBeforeMove(this))
+                canPeformMove = false;
+        }
+
+        if (VolatileStatus?.OnBeforeMove != null)
+        {
+            if (!VolatileStatus.OnBeforeMove(this))
+                canPeformMove = false;
+        }
+
+        return canPeformMove;
+    }
+
+    public void OnAfterTurn()
+    {
+        Status?.OnAfterTurn?.Invoke(this);
+        VolatileStatus?.OnAfterTurn?.Invoke(this);
     }
 }
 
