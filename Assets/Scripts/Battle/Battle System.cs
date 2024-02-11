@@ -350,7 +350,7 @@ public class BattleSystem : MonoBehaviour
         }
         else if (Input.GetKeyDown(KeyCode.X))
         {
-            partyScreen.gameObject.SetActive(true);
+            partyScreen.gameObject.SetActive(false);
             ActionSelection();
         }
 
